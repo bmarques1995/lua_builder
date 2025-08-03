@@ -1,0 +1,4 @@
+LIBRARY lua
+EXPORTS
+    luaU_dump
+    luaG_getfuncline
