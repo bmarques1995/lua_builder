@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.25)
 
 project(lua)
 
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 set(LUA_VERSION "5.4.8" CACHE STRING "Desired lua version")
 set(LUA_FTP_URL "https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz")
 
@@ -33,11 +32,11 @@ endforeach(SRC ${LIB_BASE_SOURCES})
 set(INTERPRETER_SOURCE "lua-${LUA_VERSION}/src/lua.c")
 set(COMPILER_SOURCE "lua-${LUA_VERSION}/src/luac.c")
 
-if(BUILD_SHARED_LIBS AND WIN32)
-    set(LUA_SRCS ${LUA_SRCS} "compiler.def")
-endif()
+add_library(luas STATIC ${LUA_SRCS})
+target_include_directories(luas PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lua-${LUA_VERSION}/src> 
+                                      $<INSTALL_INTERFACE:include>)
 
-add_library(lua ${LUA_SRCS})
+add_library(lua SHARED ${LUA_SRCS})
 target_include_directories(lua PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lua-${LUA_VERSION}/src> 
                                       $<INSTALL_INTERFACE:include>)
 
@@ -45,10 +44,15 @@ if(BUILD_SHARED_LIBS AND WIN32)
     target_compile_definitions(lua PUBLIC LUA_BUILD_AS_DLL PRIVATE LUA_CORE LUA_LIB)
 endif()
 
+if(LINUX)
+    target_link_libraries(luas PUBLIC m)
+    target_link_libraries(lua PUBLIC m)
+endif()
+
 add_executable(lua_interpreter ${INTERPRETER_SOURCE})
-target_link_libraries(lua_interpreter lua)
+target_link_libraries(lua_interpreter luas)
 add_executable(lua_compiler ${COMPILER_SOURCE})
-target_link_libraries(lua_compiler lua)
+target_link_libraries(lua_compiler luas)
 
 set(LUA_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(LUA_VERSION_CONFIG "${LUA_GENERATED_DIR}/luaConfigVersion.cmake")
@@ -69,7 +73,7 @@ install(
     NAMESPACE ${LUA_NAMESPACE}::
     DESTINATION ${LUA_CONFIG_INSTALL_DIR})
 
-install(TARGETS lua lua_interpreter lua_compiler
+install(TARGETS lua lua_interpreter lua_compiler luas
         EXPORT luaTargets
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
