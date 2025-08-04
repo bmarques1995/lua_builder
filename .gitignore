@@ -4,3 +4,4 @@
 !CMakeLists.txt
 !config.cmake.in
 !compiler.def
+!downloader.py
